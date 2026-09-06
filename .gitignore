@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.env
+curator-data/
+.DS_Store

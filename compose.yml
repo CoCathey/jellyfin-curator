@@ -1,0 +1,14 @@
+services:
+  curator:
+    build: .
+    image: jellyfin-curator:local
+    env_file: .env
+    volumes:
+      - ./curator-data:/data
+    networks:
+      - jellyfin_default
+    profiles: ["manual"]
+
+networks:
+  jellyfin_default:
+    external: true
