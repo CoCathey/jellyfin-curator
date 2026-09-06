@@ -2,6 +2,47 @@
 
 Nightly service: read the Jellyfin library, ask Claude for themed shelves, write them as tagged collections, optionally expose them as web home rows. Design: `docs/superpowers/specs/2026-09-04-jellyfin-curator-design.md`. Plan that built it: `docs/superpowers/plans/2026-09-04-jellyfin-curator.md`.
 
+---
+
+## If you were asked to install this
+
+You are setting up a service on someone's server, not developing it: run the published container. Everything below the next divider is for changing the code, and you do not need a checkout, Node or pnpm to install.
+
+**Get from the human before you start. Do not guess, and do not work around a missing one.**
+
+1. The Jellyfin base URL that will be reachable *from where the container runs*.
+2. A Jellyfin API key: their Dashboard → API Keys → new key. You cannot create this yourself.
+3. An Anthropic API key from console.anthropic.com. **This spends their money — about $0.25 per planning run at a 1 000-item library, billed to them.** Say that in plain terms and get an explicit yes before the first real run. A dry run costs the same as a real one, because the planning call is the bill.
+
+**Where it runs:** any machine with Docker that can reach Jellyfin. On a NAS that means shell access (SSH is often disabled by default) or their Docker UI. If you cannot reach the NAS, say so and stop — a half-installed service that silently never runs is worse than an honest "I can't get in from here".
+
+**Steps**
+
+```bash
+docker network ls                     # find Jellyfin's network if the container will share it
+docker run --rm -v curator-data:/data \
+  -e JELLYFIN_URL=... -e JELLYFIN_API_KEY=... -e ANTHROPIC_API_KEY=... \
+  ghcr.io/cocathey/jellyfin-curator run --dry-run
+```
+
+Show the human the `planned "..."` lines and let them judge the shelves before you write anything — that is the whole point of the dry run. Then drop `--dry-run`. Then schedule it:
+
+```bash
+0 4 * * * docker run --rm -v curator-data:/data --env-file /path/to/curator.env ghcr.io/cocathey/jellyfin-curator run
+```
+
+Put the keys in an `--env-file` with `chmod 600`, never inline in the crontab, and never in a file you commit. `CURATOR_MIN_DAYS_BETWEEN_RUNS=4` with a nightly cron means it only actually spends money every fourth night; the other nights exit 0 after one log line.
+
+**Verify before you claim it works:** `... jellyfin-curator status` lists the shelves, the collections appear in Jellyfin under Collections with cover art, and the run logged its token count and estimated cost. Exit codes: 0 ok, 1 failure, 2 Jellyfin unreachable or refused, 3 planner failed, 4 library too small.
+
+**Do not:** run `retire-all` (it deletes every collection this service owns); raise `CURATOR_SHELF_COUNT` past a handful without telling them what the catch-up run will cost; or touch collections the service did not create — it only ever deletes a `BoxSet` carrying its own `jellyfin-curator` tag, and that guarantee is the reason people trust it near their libraries.
+
+Settings worth offering: `CURATOR_SHELF_COUNT` (live collections), `CURATOR_ROTATE_PER_RUN` (replaced per run), `CURATOR_MIN_DAYS_BETWEEN_RUNS` (real cadence). Full table in the README. Home-screen rows for the web client and for Streamyfin on Apple TV are optional extras, documented there too, and each needs a plugin installed first.
+
+---
+
+## Working on the project
+
 ## Commands
 
 ```bash
